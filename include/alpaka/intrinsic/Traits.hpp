@@ -40,6 +40,13 @@ namespace alpaka
                 typename TWarp,
                 typename TSfinae = void>
             struct Ffs;
+
+            //#############################################################################
+            //! The thread fence trait.
+            template<
+                typename TWarp,
+                typename TSfinae = void>
+            struct Threadfence;
         }
 
         //-----------------------------------------------------------------------------
@@ -130,6 +137,26 @@ namespace alpaka
             ::ffs(
                 intrinsic,
                 value);
+        }
+
+        //-----------------------------------------------------------------------------
+        //! Returns the 1-based position of the least significant bit set to 1
+        //! in the given 64-bit value. Returns 0 for input value 0.
+        //!
+        //! \tparam TIntrinsic The intrinsic implementation type.
+        //! \param intrinsic The intrinsic implementation.
+        ALPAKA_NO_HOST_ACC_WARNING
+        template<
+            typename TIntrinsic>
+        ALPAKA_FN_ACC auto threadfence(
+            TIntrinsic const & intrinsic)
+        -> void
+        {
+            using ImplementationBase = concepts::ImplementationBase<ConceptIntrinsic, TIntrinsic>;
+            return traits::Threadfence<
+                ImplementationBase>
+                ::threadfence(
+                    intrinsic);
         }
     }
 }

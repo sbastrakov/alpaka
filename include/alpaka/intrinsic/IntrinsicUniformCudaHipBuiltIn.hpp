@@ -103,6 +103,20 @@ namespace alpaka
                     return __ffsll(value);
                 }
             };
+
+            //#############################################################################
+            template<>
+            struct Threadfence<
+                IntrinsicUniformCudaHipBuiltIn>
+            {
+                //-----------------------------------------------------------------------------
+                __device__ static auto threadfence(
+                    intrinsic::IntrinsicUniformCudaHipBuiltIn const & /*intrinsic*/)
+                -> void
+                {
+                    return __threadfence();
+                }
+            };
         }
     }
 }

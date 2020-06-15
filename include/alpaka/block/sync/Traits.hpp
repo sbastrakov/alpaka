@@ -44,6 +44,22 @@ namespace alpaka
                     typename TBlockSync,
                     typename TSfinae = void>
                 struct SyncBlockThreadsPredicate;
+
+                //#############################################################################
+                //! The thread fence trait.
+                template<
+                    typename TOp,
+                    typename TBlockSync,
+                    typename TSfinae = void>
+                struct Threadfence;
+
+                //#############################################################################
+                //! The block thread fence trait.
+                template<
+                    typename TOp,
+                    typename TBlockSync,
+                    typename TSfinae = void>
+                struct ThreadfenceBlock;
             }
 
             //-----------------------------------------------------------------------------
@@ -148,6 +164,44 @@ namespace alpaka
                     ::syncBlockThreadsPredicate(
                         blockSync,
                         predicate);
+            }
+
+            //-----------------------------------------------------------------------------
+            //! Performs thread fencing for all threads within the current block (independently for all blocks).
+            //!
+            //! \tparam TBlockSync The block synchronization implementation type.
+            //! \param blockSync The block synchronization implementation.
+            ALPAKA_NO_HOST_ACC_WARNING
+            template<
+                typename TBlockSync>
+            ALPAKA_FN_ACC auto threadfence(
+                TBlockSync const & blockSync)
+            -> void
+            {
+                using ImplementationBase = concepts::ImplementationBase<ConceptBlockSync, TBlockSync>;
+                traits::Threadfence<
+                    ImplementationBase>
+                ::threadfence(
+                    blockSync);
+            }
+
+            //-----------------------------------------------------------------------------
+            //! Performs thread fencing (independently for all blocks).
+            //!
+            //! \tparam TBlockSync The block synchronization implementation type.
+            //! \param blockSync The block synchronization implementation.
+            ALPAKA_NO_HOST_ACC_WARNING
+            template<
+                typename TBlockSync>
+            ALPAKA_FN_ACC auto threadfenceBlock(
+                TBlockSync const & blockSync)
+            -> void
+            {
+                using ImplementationBase = concepts::ImplementationBase<ConceptBlockSync, TBlockSync>;
+                traits::ThreadfenceBlock<
+                    ImplementationBase>
+                ::threadfenceBlock(
+                    blockSync);
             }
         }
     }
