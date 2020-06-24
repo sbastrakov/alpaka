@@ -21,6 +21,7 @@
     #error If ALPAKA_ACC_GPU_HIP_ENABLED is set, the compiler has to support HIP!
 #endif
 
+#include <alpaka/core/Unused.hpp>
 #include <alpaka/warp/Traits.hpp>
 
 #include <cstdint>
@@ -71,15 +72,17 @@ namespace alpaka
             {
                 //-----------------------------------------------------------------------------
                 __device__ static auto all(
-                    warp::WarpUniformCudaHipBuiltIn const & /*warp*/,
+                    warp::WarpUniformCudaHipBuiltIn const & warp,
                     std::int32_t predicate)
                 -> std::int32_t
                 {
 #if defined(ALPAKA_ACC_GPU_CUDA_ENABLED)
+                    auto const mask = static_cast<std::uint32_t>(activemask(warp));
                     return __all_sync(
-                        __activemask(),
+                        mask,
                         predicate);
 #else
+                    ignore_unused(warp);
                     return __all(predicate);
 #endif
                 }
@@ -92,15 +95,17 @@ namespace alpaka
             {
                 //-----------------------------------------------------------------------------
                 __device__ static auto any(
-                    warp::WarpUniformCudaHipBuiltIn const & /*warp*/,
+                    warp::WarpUniformCudaHipBuiltIn const & warp,
                     std::int32_t predicate)
                 -> std::int32_t
                 {
 #if defined(ALPAKA_ACC_GPU_CUDA_ENABLED)
+                    auto const mask = static_cast<std::uint32_t>(activemask(warp));
                     return __any_sync(
-                        __activemask(),
+                        mask,
                         predicate);
 #else
+                    ignore_unused(warp);
                     return __any(predicate);
 #endif
                 }
@@ -113,15 +118,17 @@ namespace alpaka
             {
                 //-----------------------------------------------------------------------------
                 __device__ static auto ballot(
-                    warp::WarpUniformCudaHipBuiltIn const & /*warp*/,
+                    warp::WarpUniformCudaHipBuiltIn const & warp,
                     std::int32_t predicate)
                 -> std::uint64_t
                 {
 #if defined(ALPAKA_ACC_GPU_CUDA_ENABLED)
+                    auto const mask = static_cast<std::uint32_t>(activemask(warp));
                     return __ballot_sync(
-                        __activemask(),
+                        mask,
                         predicate);
 #else
+                    ignore_unused(warp);
                     return __ballot(predicate);
 #endif
                 }
@@ -138,7 +145,16 @@ namespace alpaka
                 -> std::uint64_t
                 {
 #if defined(ALPAKA_ACC_GPU_CUDA_ENABLED)
+                    // Workaround for clang + CUDA 9.2 which uses the wrong PTX ISA,
+                    // discussion in https://github.com/alpaka-group/alpaka/pull/1003
+                    // Can't use __activemask(), so emulate with __ballot_sync()
+    #if BOOST_COMP_CLANG_CUDA && BOOST_LANG_CUDA == BOOST_VERSION_NUMBER(9, 2, 0)
+                    return static_cast<std::uint64_t>(__ballot_sync(
+                        0xffffffff,
+                        1));
+    #else
                     return static_cast<std::uint64_t>(__activemask());
+    #endif
 #else
                     // No HIP intrinsic for it, emulate via ballot
                     return __ballot(1);
