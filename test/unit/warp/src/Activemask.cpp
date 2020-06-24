@@ -100,6 +100,9 @@ TEMPLATE_LIST_TEST_CASE( "activemask", "[warp]", alpaka::test::acc::TestAccs)
     }
     else
     {
+#if BOOST_COMP_GNUC && (BOOST_COMP_GNUC == BOOST_VERSION_NUMBER(7, 5, 0)) && ALPAKA_ACC_CPU_BT_OMP4_ENABLED
+        return;
+#else
         using ExecutionFixture = alpaka::test::KernelExecutionFixture<Acc>;
         auto const gridBlockExtent = alpaka::vec::Vec<Dim, Idx>::all(2);
         // Enforce one warp per thread block
@@ -118,5 +121,6 @@ TEMPLATE_LIST_TEST_CASE( "activemask", "[warp]", alpaka::test::acc::TestAccs)
                 fixture(
                     kernel,
                     inactiveThreadIdx));
+#endif
     }
 }
