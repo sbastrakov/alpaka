@@ -46,7 +46,6 @@ namespace alpaka
                 //-----------------------------------------------------------------------------
                 static auto getSize(
                     warp::WarpSingleThread const & /*warp*/)
-                -> std::int32_t
                 {
                     return 1;
                 }
@@ -61,7 +60,6 @@ namespace alpaka
                 static auto all(
                     warp::WarpSingleThread const & /*warp*/,
                     std::int32_t predicate)
-                -> std::int32_t
                 {
                     return predicate;
                 }
@@ -76,7 +74,6 @@ namespace alpaka
                 static auto any(
                     warp::WarpSingleThread const & /*warp*/,
                     std::int32_t predicate)
-                -> std::int32_t
                 {
                     return predicate;
                 }
@@ -91,7 +88,6 @@ namespace alpaka
                 static auto ballot(
                     warp::WarpSingleThread const & /*warp*/,
                     std::int32_t predicate)
-                -> std::uint64_t
                 {
                     return predicate ? 1u : 0u;
                 }
@@ -105,7 +101,6 @@ namespace alpaka
                 //-----------------------------------------------------------------------------
                 static auto activemask(
                     warp::WarpSingleThread const & /*warp*/)
-                -> std::uint64_t
                 {
                     return 1u;
                 }

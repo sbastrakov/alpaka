@@ -139,10 +139,10 @@ namespace alpaka
         }
 
         //-----------------------------------------------------------------------------
-        //! Evaluates predicate for all non-exited threads in mask and returns
-        //! a 64-bit integer whose Nth bit is set if and only if predicate
-        //! evaluates to non-zero for the Nth thread of the warp and the Nth
-        //! thread is active.
+        //! Evaluates predicate for all non-exited threads in a warp and returns
+        //! a 32- or 64-bit unsigned integer (depending on the accelerator)
+        //! whose Nth bit is set if and only if predicate evaluates to non-zero
+        //! for the Nth thread of the warp and the Nth thread is active.
         //!
         //! It follows the logic of __ballot(predicate) in CUDA before version 9.0 and HIP,
         //! the operation is applied for all active threads.
@@ -152,13 +152,13 @@ namespace alpaka
         //! \tparam TWarp The warp implementation type.
         //! \param warp The warp implementation.
         //! \param predicate The predicate value for current thread.
+        //! \return 32-bit or 64-bit unsigned type depending on the accelerator.
         ALPAKA_NO_HOST_ACC_WARNING
         template<
             typename TWarp>
         ALPAKA_FN_ACC auto ballot(
             TWarp const & warp,
             std::int32_t predicate)
-        -> std::uint64_t
         {
             using ImplementationBase = concepts::ImplementationBase<ConceptWarp, TWarp>;
             return traits::Ballot<
@@ -169,17 +169,18 @@ namespace alpaka
         }
 
         //-----------------------------------------------------------------------------
-        //! Returns a 64-bit integer whose Nth bit is set if and only if the Nth
-        //! thread of the warp is active.
+        //! Returns a 32- or 64-bit unsigned integer (depending on the
+        //! accelerator) whose Nth bit is set if and only if the Nth thread
+        //! of the warp is active.
         //!
         //! \tparam TWarp The warp implementation type.
         //! \param warp The warp implementation.
+        //! \return 32-bit or 64-bit unsigned type depending on the accelerator.
         ALPAKA_NO_HOST_ACC_WARNING
         template<
             typename TWarp>
         ALPAKA_FN_ACC auto activemask(
             TWarp const & warp)
-        -> std::uint64_t
         {
             using ImplementationBase = concepts::ImplementationBase<
                 ConceptWarp,
