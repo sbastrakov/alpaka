@@ -33,7 +33,7 @@ public:
         std::int32_t const warpExtent = alpaka::warp::getSize(acc);
         ALPAKA_CHECK(*success, warpExtent == 1);
 
-        ALPAKA_CHECK(*success, alpaka::warp::activemask(acc) != 0u);
+        ALPAKA_CHECK(*success, alpaka::warp::activemask(acc) == 1u);
     }
 };
 
@@ -67,13 +67,15 @@ public:
         if (threadIdxInWarp == inactiveThreadIdx)
             return;
 
-        std::uint64_t const allActive =
-            (std::uint64_t{1} << static_cast<std::uint64_t>(warpExtent)) - 1;
-        std::uint64_t const expected = allActive &
-            ~(std::uint64_t{1} << inactiveThreadIdx);
+        auto const actual = alpaka::warp::activemask(acc);
+        using Result = decltype(actual);
+        Result const allActive =
+            (Result{1} << static_cast<Result>(warpExtent)) - 1;
+        Result const expected = allActive &
+            ~(Result{1} << inactiveThreadIdx);
         ALPAKA_CHECK(
             *success,
-            alpaka::warp::activemask(acc) == expected);
+            actual == expected);
     }
 };
 
