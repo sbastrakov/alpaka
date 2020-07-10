@@ -13,6 +13,7 @@
 
 // Specialized traits.
 #include <alpaka/acc/Traits.hpp>
+#include <alpaka/core/Utility.hpp>
 #include <alpaka/dev/Traits.hpp>
 #include <alpaka/dim/Traits.hpp>
 #include <alpaka/pltf/Traits.hpp>
@@ -121,7 +122,7 @@ namespace alpaka
                 // Get the size of the block shared dynamic memory.
                 auto const blockSharedMemDynSizeBytes(
                     meta::apply(
-                        [&](std::decay_t<TArgs> const & ... args)
+                        [&](core::decay_t<TArgs> const & ... args)
                         {
                             return
                                 kernel::getBlockSharedMemDynSizeBytes<
@@ -147,7 +148,7 @@ namespace alpaka
                 // Bind the kernel and its arguments to the grid block function.
                 auto const boundGridBlockExecHost(
                     meta::apply(
-                        [this, &acc, &blockThreadExtent, &threadPool](std::decay_t<TArgs> const & ... args)
+                        [this, &acc, &blockThreadExtent, &threadPool](core::decay_t<TArgs> const & ... args)
                         {
                             return
                                 std::bind(
@@ -176,7 +177,7 @@ namespace alpaka
                 vec::Vec<TDim, TIdx> const & blockThreadExtent,
                 ThreadPool & threadPool,
                 TKernelFnObj const & kernelFnObj,
-                std::decay_t<TArgs> const & ... args)
+                core::decay_t<TArgs> const & ... args)
             -> void
             {
                     // The futures of the threads in the current block.
@@ -232,7 +233,7 @@ namespace alpaka
                 ThreadPool &,
 #endif
                 TKernelFnObj const & kernelFnObj,
-                std::decay_t<TArgs> const & ... args)
+                core::decay_t<TArgs> const & ... args)
             -> void
             {
                 // Bind the arguments to the accelerator block thread execution function.
@@ -262,7 +263,7 @@ namespace alpaka
                 acc::AccCpuThreads<TDim, TIdx> & acc,
                 vec::Vec<TDim, TIdx> const & blockThreadIdx,
                 TKernelFnObj const & kernelFnObj,
-                std::decay_t<TArgs> const & ... args)
+                core::decay_t<TArgs> const & ... args)
             -> void
             {
                 // We have to store the thread data before the kernel is calling any of the methods of this class depending on them.
@@ -296,7 +297,7 @@ namespace alpaka
             }
 
             TKernelFnObj m_kernelFnObj;
-            std::tuple<std::decay_t<TArgs>...> m_args;
+            std::tuple<core::decay_t<TArgs>...> m_args;
         };
     }
 

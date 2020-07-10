@@ -17,6 +17,7 @@
 
 // Specialized traits.
 #include <alpaka/acc/Traits.hpp>
+#include <alpaka/core/Utility.hpp>
 #include <alpaka/dev/Traits.hpp>
 #include <alpaka/dim/Traits.hpp>
 #include <alpaka/pltf/Traits.hpp>
@@ -100,7 +101,7 @@ namespace alpaka
                 // Get the size of the block shared dynamic memory.
                 auto const blockSharedMemDynSizeBytes(
                     meta::apply(
-                        [&](std::decay_t<TArgs> const & ... args)
+                        [&](core::decay_t<TArgs> const & ... args)
                         {
                             return
                                 kernel::getBlockSharedMemDynSizeBytes<
@@ -120,7 +121,7 @@ namespace alpaka
                 // TODO: With C++14 we could create a perfectly argument forwarding function object within the constructor.
                 auto const boundKernelFnObj(
                     meta::apply(
-                        [this](std::decay_t<TArgs> const & ... args)
+                        [this](core::decay_t<TArgs> const & ... args)
                         {
                             return
                                 std::bind(
@@ -221,7 +222,7 @@ namespace alpaka
             }
 
             TKernelFnObj m_kernelFnObj;
-            std::tuple<std::decay_t<TArgs>...> m_args;
+            std::tuple<core::decay_t<TArgs>...> m_args;
         };
     }
 

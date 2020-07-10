@@ -1,4 +1,4 @@
-/* Copyright 2019 Benjamin Worpitz, René Widera
+/* Copyright 2019 Benjamin Worpitz, René Widera, Sergei Bastrakov
  *
  * This file is part of alpaka.
  *
@@ -8,6 +8,7 @@
  */
 #pragma once
 
+#include <alpaka/core/BoostPredef.hpp>
 #include <alpaka/core/Common.hpp>
 
 #if BOOST_LANG_CUDA && BOOST_COMP_CLANG_CUDA || BOOST_COMP_HIP
@@ -35,5 +36,20 @@ namespace alpaka
 #else
         using std::declval;
 #endif
+
+        //-----------------------------------------------------------------------------
+        //! Wrapper around std::decay_t
+        //
+        // Works around Intel compiler internal error when used empty template pack
+        // extension as discussed in #995
+        //-----------------------------------------------------------------------------
+#if BOOST_COMP_INTEL
+        template< class T >
+        using decay_t = typename std::decay< T >::type;
+#else
+        template< class T >
+        using decay_t = std::decay_t< T >;
+#endif
+
     }
 }
