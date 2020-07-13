@@ -66,6 +66,33 @@ namespace alpaka
 
             //#############################################################################
             template<>
+            struct Activemask<
+                WarpUniformCudaHipBuiltIn>
+            {
+                //-----------------------------------------------------------------------------
+                __device__ static auto activemask(
+                    warp::WarpUniformCudaHipBuiltIn const & /*warp*/)
+                {
+#if defined(ALPAKA_ACC_GPU_CUDA_ENABLED)
+                    // Workaround for clang + CUDA 9.2 which uses the wrong PTX ISA,
+                    // discussion in https://github.com/alpaka-group/alpaka/pull/1003
+                    // Can't use __activemask(), so emulate with __ballot_sync()
+    #if BOOST_COMP_CLANG_CUDA && BOOST_LANG_CUDA == BOOST_VERSION_NUMBER(9, 2, 0)
+                    return __ballot_sync(
+                        0xffffffff,
+                        1);
+    #else
+                    return __activemask();
+    #endif
+#else
+                    // No HIP intrinsic for it, emulate via ballot
+                    return __ballot(1);
+#endif
+                }
+            };
+
+            //#############################################################################
+            template<>
             struct All<
                 WarpUniformCudaHipBuiltIn>
             {
@@ -75,9 +102,8 @@ namespace alpaka
                     std::int32_t predicate)
                 {
 #if defined(ALPAKA_ACC_GPU_CUDA_ENABLED)
-                    auto const mask = static_cast<std::uint32_t>(activemask(warp));
                     return __all_sync(
-                        mask,
+                        activemask(warp),
                         predicate);
 #else
                     ignore_unused(warp);
@@ -97,9 +123,8 @@ namespace alpaka
                     std::int32_t predicate)
                 {
 #if defined(ALPAKA_ACC_GPU_CUDA_ENABLED)
-                    auto const mask = static_cast<std::uint32_t>(activemask(warp));
                     return __any_sync(
-                        mask,
+                        activemask(warp),
                         predicate);
 #else
                     ignore_unused(warp);
@@ -125,33 +150,6 @@ namespace alpaka
 #else
                     ignore_unused(warp);
                     return __ballot(predicate);
-#endif
-                }
-            };
-
-            //#############################################################################
-            template<>
-            struct Activemask<
-                WarpUniformCudaHipBuiltIn>
-            {
-                //-----------------------------------------------------------------------------
-                __device__ static auto activemask(
-                    warp::WarpUniformCudaHipBuiltIn const & /*warp*/)
-                {
-#if defined(ALPAKA_ACC_GPU_CUDA_ENABLED)
-                    // Workaround for clang + CUDA 9.2 which uses the wrong PTX ISA,
-                    // discussion in https://github.com/alpaka-group/alpaka/pull/1003
-                    // Can't use __activemask(), so emulate with __ballot_sync()
-    #if BOOST_COMP_CLANG_CUDA && BOOST_LANG_CUDA == BOOST_VERSION_NUMBER(9, 2, 0)
-                    return __ballot_sync(
-                        0xffffffff,
-                        1);
-    #else
-                    return __activemask();
-    #endif
-#else
-                    // No HIP intrinsic for it, emulate via ballot
-                    return __ballot(1);
 #endif
                 }
             };

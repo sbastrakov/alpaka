@@ -85,6 +85,35 @@ namespace alpaka
         }
 
         //-----------------------------------------------------------------------------
+        //! Returns a 32- or 64-bit unsigned integer (depending on the
+        //! accelerator) whose Nth bit is set if and only if the Nth thread
+        //! of the warp is active.
+        //!
+        //! Note: decltype for return type is required there, otherwise
+        //! compilcation with a CPU and a GPU accelerator enabled fails as it
+        //! tries to call device function from a host-device one. The reason
+        //! is unclear, but likely related to deducing the return type.
+        //!
+        //! \tparam TWarp The warp implementation type.
+        //! \param warp The warp implementation.
+        //! \return 32-bit or 64-bit unsigned type depending on the accelerator.
+        ALPAKA_NO_HOST_ACC_WARNING
+        template<
+            typename TWarp>
+        ALPAKA_FN_ACC auto activemask(
+            TWarp const & warp) -> decltype(traits::Activemask<
+                concepts::ImplementationBase<ConceptWarp, TWarp> >::activemask(warp))
+        {
+            using ImplementationBase = concepts::ImplementationBase<
+                ConceptWarp,
+                TWarp>;
+            return traits::Activemask<
+                ImplementationBase>
+                ::activemask(
+                    warp);
+        }
+
+        //-----------------------------------------------------------------------------
         //! Evaluates predicate for all active threads of the warp and returns
         //! non-zero if and only if predicate evaluates to non-zero for all of them.
         //!
@@ -166,29 +195,6 @@ namespace alpaka
             ::ballot(
                 warp,
                 predicate);
-        }
-
-        //-----------------------------------------------------------------------------
-        //! Returns a 32- or 64-bit unsigned integer (depending on the
-        //! accelerator) whose Nth bit is set if and only if the Nth thread
-        //! of the warp is active.
-        //!
-        //! \tparam TWarp The warp implementation type.
-        //! \param warp The warp implementation.
-        //! \return 32-bit or 64-bit unsigned type depending on the accelerator.
-        ALPAKA_NO_HOST_ACC_WARNING
-        template<
-            typename TWarp>
-        ALPAKA_FN_ACC auto activemask(
-            TWarp const & warp)
-        {
-            using ImplementationBase = concepts::ImplementationBase<
-                ConceptWarp,
-                TWarp>;
-            return traits::Activemask<
-                ImplementationBase>
-                ::activemask(
-                    warp);
         }
     }
 }

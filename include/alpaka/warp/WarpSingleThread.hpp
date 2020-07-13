@@ -53,6 +53,19 @@ namespace alpaka
 
             //#############################################################################
             template<>
+            struct Activemask<
+                WarpSingleThread>
+            {
+                //-----------------------------------------------------------------------------
+                static auto activemask(
+                    warp::WarpSingleThread const & /*warp*/)
+                {
+                    return 1u;
+                }
+            };
+
+            //#############################################################################
+            template<>
             struct All<
                 WarpSingleThread>
             {
@@ -90,19 +103,6 @@ namespace alpaka
                     std::int32_t predicate)
                 {
                     return predicate ? 1u : 0u;
-                }
-            };
-
-            //#############################################################################
-            template<>
-            struct Activemask<
-                WarpSingleThread>
-            {
-                //-----------------------------------------------------------------------------
-                static auto activemask(
-                    warp::WarpSingleThread const & /*warp*/)
-                {
-                    return 1u;
                 }
             };
         }
