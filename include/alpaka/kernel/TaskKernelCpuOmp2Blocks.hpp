@@ -25,6 +25,7 @@
 // Implementation details.
 #    include <alpaka/acc/AccCpuOmp2Blocks.hpp>
 #    include <alpaka/core/Decay.hpp>
+#    include <alpaka/core/OmpSchedule.hpp>
 #    include <alpaka/dev/DevCpu.hpp>
 #    include <alpaka/idx/MapIdx.hpp>
 #    include <alpaka/kernel/Traits.hpp>
@@ -92,6 +93,17 @@ namespace alpaka
                 },
                 m_args));
 
+            // Get the OpenMP schedule.
+            auto const schedule(meta::apply(
+                [&](ALPAKA_DECAY_T(TArgs) const&... args) {
+                    return getOmpSchedule<AccCpuOmp2Blocks<TDim, TIdx>>(
+                        m_kernelFnObj,
+                        blockThreadExtent,
+                        threadElemExtent,
+                        args...);
+                },
+                m_args));
+
 #    if ALPAKA_DEBUG >= ALPAKA_DEBUG_FULL
             std::cout << __func__ << " blockSharedMemDynSizeBytes: " << blockSharedMemDynSizeBytes << " B"
                       << std::endl;
@@ -116,7 +128,7 @@ namespace alpaka
 #    if ALPAKA_DEBUG >= ALPAKA_DEBUG_FULL
                 std::cout << __func__ << " already within a parallel region." << std::endl;
 #    endif
-                parallelFn(boundKernelFnObj, blockSharedMemDynSizeBytes, numBlocksInGrid, gridBlockExtent);
+                parallelFn(boundKernelFnObj, blockSharedMemDynSizeBytes, schedule, numBlocksInGrid, gridBlockExtent);
             }
             else
             {
@@ -124,7 +136,7 @@ namespace alpaka
                 std::cout << __func__ << " opening new parallel region." << std::endl;
 #    endif
 #    pragma omp parallel
-                parallelFn(boundKernelFnObj, blockSharedMemDynSizeBytes, numBlocksInGrid, gridBlockExtent);
+                parallelFn(boundKernelFnObj, blockSharedMemDynSizeBytes, schedule, numBlocksInGrid, gridBlockExtent);
             }
         }
 
@@ -133,6 +145,7 @@ namespace alpaka
         ALPAKA_FN_HOST auto parallelFn(
             FnObj const& boundKernelFnObj,
             std::size_t const& blockSharedMemDynSizeBytes,
+            omp::Schedule const schedule,
             TIdx const& numBlocksInGrid,
             Vec<TDim, TIdx> const& gridBlockExtent) const -> void
         {
@@ -156,15 +169,17 @@ namespace alpaka
                 *static_cast<WorkDivMembers<TDim, TIdx> const*>(this),
                 blockSharedMemDynSizeBytes);
 
-            // NOTE: schedule(static) does not improve performance.
+            auto oldSchedule = omp::getSchedule();
+            omp::setSchedule(schedule);
 #    if _OPENMP < 200805 // For OpenMP < 3.0 you have to declare the loop index (a signed integer) outside of the loop
                          // header.
             std::intmax_t iNumBlocksInGrid(static_cast<std::intmax_t>(numBlocksInGrid));
             std::intmax_t i;
+            // OpenMP 2.0 does not support schedule(runtime), stick to guided
 #        pragma omp for nowait schedule(guided)
             for(i = 0; i < iNumBlocksInGrid; ++i)
 #    else
-#        pragma omp for nowait schedule(guided)
+#        pragma omp for nowait schedule(runtime)
             for(TIdx i = 0; i < numBlocksInGrid; ++i)
 #    endif
             {
@@ -181,6 +196,8 @@ namespace alpaka
                 // After a block has been processed, the shared memory has to be deleted.
                 freeSharedVars(acc);
             }
+            // Restore the old schedule to not interfere with the rest
+            omp::setSchedule(oldSchedule);
         }
 
         TKernelFnObj m_kernelFnObj;
