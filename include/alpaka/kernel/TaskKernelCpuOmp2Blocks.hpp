@@ -174,26 +174,23 @@ namespace alpaka
             class ScheduleGuard
             {
             public:
-
-                ScheduleGuard( omp::Schedule const schedule ):
-                    oldSchedule( omp::getSchedule() )
+                ScheduleGuard(omp::Schedule const schedule) : oldSchedule(omp::getSchedule())
                 {
-                    omp::setSchedule( schedule );
+                    omp::setSchedule(schedule);
                 }
 
-                ~ScheduleGuard( )
+                ~ScheduleGuard()
                 {
-                    omp::setSchedule( oldSchedule );
+                    omp::setSchedule(oldSchedule);
                 }
 
             private:
-
                 omp::Schedule const oldSchedule;
             };
 
             // Schedule change is a scoped object, so that the old schedule is
             // also restored in case of exception
-            auto const scheduleGuard = ScheduleGuard{ schedule };
+            auto const scheduleGuard = ScheduleGuard{schedule};
 #    if _OPENMP < 200805 // For OpenMP < 3.0 you have to declare the loop index (a signed integer) outside of the loop
                          // header.
             std::intmax_t iNumBlocksInGrid(static_cast<std::intmax_t>(numBlocksInGrid));
