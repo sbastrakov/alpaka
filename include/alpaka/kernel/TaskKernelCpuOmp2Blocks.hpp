@@ -169,14 +169,36 @@ namespace alpaka
                 *static_cast<WorkDivMembers<TDim, TIdx> const*>(this),
                 blockSharedMemDynSizeBytes);
 
-            auto oldSchedule = omp::getSchedule();
-            omp::setSchedule(schedule);
+            //! Set the given OpenMP schedule while this object is alive.
+            //! Restore the old schedule afterwards.
+            class ScheduleGuard
+            {
+            public:
+
+                ScheduleGuard( omp::Schedule const schedule ):
+                    oldSchedule( omp::getSchedule() )
+                {
+                    omp::setSchedule( schedule );
+                }
+
+                ~ScheduleGuard( )
+                {
+                    omp::setSchedule( oldSchedule );
+                }
+
+            private:
+
+                omp::Schedule const oldSchedule;
+            };
+
+            // Schedule change is a scoped object, so that the old schedule is
+            // also restored in case of exception
+            auto const scheduleGuard = ScheduleGuard{ schedule };
 #    if _OPENMP < 200805 // For OpenMP < 3.0 you have to declare the loop index (a signed integer) outside of the loop
                          // header.
             std::intmax_t iNumBlocksInGrid(static_cast<std::intmax_t>(numBlocksInGrid));
             std::intmax_t i;
-            // OpenMP 2.0 does not support schedule(runtime), stick to guided
-#        pragma omp for nowait schedule(guided)
+#        pragma omp for nowait schedule(runtime)
             for(i = 0; i < iNumBlocksInGrid; ++i)
 #    else
 #        pragma omp for nowait schedule(runtime)
@@ -196,8 +218,6 @@ namespace alpaka
                 // After a block has been processed, the shared memory has to be deleted.
                 freeSharedVars(acc);
             }
-            // Restore the old schedule to not interfere with the rest
-            omp::setSchedule(oldSchedule);
         }
 
         TKernelFnObj m_kernelFnObj;

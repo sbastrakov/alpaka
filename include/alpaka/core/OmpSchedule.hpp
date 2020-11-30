@@ -24,12 +24,11 @@ namespace alpaka
     {
         //#############################################################################
         //! Representation of OpenMP schedule information: kind and chunk size.
-        //!
-        //! This class can be used regardless of whether OpenMP is enabled
+        //! This class can be used regardless of whether OpenMP is enabled.
         struct Schedule
         {
             //#############################################################################
-            //! Mirror of the OpenMP enum omp_sched_t with the corresponding integer values
+            //! Mirror of the OpenMP enum omp_sched_t with the corresponding integer values.
             enum Kind
             {
                 Static = 1,
@@ -39,18 +38,16 @@ namespace alpaka
             };
 
             //! Integer representation of schedule kind.
-            //!
-            //! Not stored as Kind to reduce casts when converting to and from omp_sched_t
+            //! Not stored as Kind to reduce casts when converting to and from omp_sched_t.
             uint32_t kind;
 
-            //! Chink size.
-            //!
-            //! Same as in OpenMP, value 0 corresponds to default chunk size
+            //! Chunk size.
+            //! Same as in OpenMP, value 0 corresponds to default chunk size.
             int chunkSize;
 
-            constexpr Schedule(Kind kind = Guided, int chunkSize = 0)
-                : kind(static_cast<uint32_t>(kind))
-                , chunkSize(chunkSize)
+            constexpr Schedule(Kind myKind = Guided, int myChunkSize = 0)
+                : kind(static_cast<uint32_t>(myKind))
+                , chunkSize(myChunkSize)
             {
             }
         };
@@ -80,6 +77,8 @@ namespace alpaka
         //! Set the OpenMP schedule that is applied when the runtime schedule is used.
         //!
         //! When executed without OpenMP or with OpenMP < 3.0, does nothing.
+        //! For OpenMP < 3.0 the schedule is controlled by OMP_SCHEDULE
+        //! environment variable.
         ALPAKA_FN_HOST inline void setSchedule(Schedule schedule)
         {
 #if defined _OPENMP && _OPENMP >= 200805
