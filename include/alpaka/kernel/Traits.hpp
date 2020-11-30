@@ -1,4 +1,5 @@
-/* Copyright 2019 Axel Huebl, Benjamin Worpitz, René Widera, Sergei Bastrakov
+/* Copyright 2019-2020 Axel Huebl, Benjamin Worpitz, René Widera,
+ *                     Sergei Bastrakov
  *
  * This file is part of alpaka.
  *
@@ -108,7 +109,11 @@ namespace alpaka
             {
                 ALPAKA_FN_HOST_ACC auto operator()() const
                 {
-                    return TKernel::ompSchedule;
+                    // Just having return TKernel::ompSchedule here would be
+                    // a non-odr use of that variable, since it would be an
+                    // argument of the copy constructor. So have to manually
+                    // create a new identical object and then return it.
+                    return alpaka::omp::Schedule{TKernel::ompSchedule.kind, TKernel::ompSchedule.chunkSize};
                 }
             };
         } // namespace detail

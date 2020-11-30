@@ -30,6 +30,13 @@ TEST_CASE("ompScheduleConstructor", "[core]")
 }
 
 //-----------------------------------------------------------------------------
+TEST_CASE("ompScheduleConstexprConstructor", "[core]")
+{
+    constexpr auto schedule = alpaka::omp::Schedule{alpaka::omp::Schedule::Dynamic};
+    alpaka::ignore_unused(schedule);
+}
+
+//-----------------------------------------------------------------------------
 TEST_CASE("ompGetSchedule", "[core]")
 {
     auto const schedule = alpaka::omp::getSchedule();

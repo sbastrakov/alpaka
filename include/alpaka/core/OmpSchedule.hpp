@@ -28,26 +28,36 @@ namespace alpaka
         struct Schedule
         {
             //#############################################################################
-            //! Mirror of the OpenMP enum omp_sched_t with the corresponding integer values.
-            enum Kind
-            {
-                Static = 1,
-                Dynamic = 2,
-                Guided = 3,
-                Auto = 4
-            };
+            //! Integers corresponding to the mandatory OpenMP omp_sched_t enum
+            //! values as of version 5.0.
+            constexpr static uint32_t Static = 1;
+            constexpr static uint32_t Dynamic = 2;
+            constexpr static uint32_t Guided = 3;
+            constexpr static uint32_t Auto = 4;
+            // Each schedule value can be combined with monotonic using + or |
+            constexpr static uint32_t Monotonic = 0x80000000u;
 
-            //! Integer representation of schedule kind.
-            //! Not stored as Kind to reduce casts when converting to and from omp_sched_t.
+            //! Schedule kind.
+            //!
+            //! We cannot simply use type omp_sched_t since this struct is
+            //! agnostic of OpenMP. We also cannot create an own mirror enum,
+            //! since OpenMP implementations are allowed to extend the range of
+            //! values beyond the standard ones defined above. So we have to
+            //! accept and store any uint32_t value, and for non-standard values
+            //! a user has to ensure the underlying implementation supports it.
             uint32_t kind;
 
             //! Chunk size.
             //! Same as in OpenMP, value 0 corresponds to default chunk size.
+            //! Using int and not a fixed-width type to match OpenMP API.
             int chunkSize;
 
-            constexpr Schedule(Kind myKind = Guided, int myChunkSize = 0)
-                : kind(static_cast<uint32_t>(myKind))
-                , chunkSize(myChunkSize)
+            //! The provided value myKind has to be supported by the underlying
+            //! OpenMP implementation. It does not have to be one of the
+            //! constants defined above.
+            //! The constructor is constexpr to simplify creation of static
+            //! constexpr ompSchedule in user code.
+            constexpr Schedule(uint32_t myKind = Guided, int myChunkSize = 0) : kind(myKind), chunkSize(myChunkSize)
             {
             }
         };
@@ -63,11 +73,10 @@ namespace alpaka
         {
             // Getting a runtime schedule requires OpenMP 3.0 or newer
 #if defined _OPENMP && _OPENMP >= 200805
-            auto result = Schedule{};
-            omp_sched_t kind;
-            omp_get_schedule(&kind, &result.chunkSize);
-            result.kind = static_cast<uint32_t>(kind);
-            return result;
+            omp_sched_t ompKind;
+            int chunkSize = 0;
+            omp_get_schedule(&ompKind, &chunkSize);
+            return Schedule{static_cast<uint32_t>(ompKind), chunkSize};
 #else
             return Schedule{};
 #endif
@@ -82,8 +91,7 @@ namespace alpaka
         ALPAKA_FN_HOST inline void setSchedule(Schedule schedule)
         {
 #if defined _OPENMP && _OPENMP >= 200805
-            auto const kind = static_cast<omp_sched_t>(schedule.kind);
-            omp_set_schedule(kind, schedule.chunkSize);
+            omp_set_schedule(static_cast<omp_sched_t>(schedule.kind), schedule.chunkSize);
 #else
             ignore_unused(schedule);
 #endif

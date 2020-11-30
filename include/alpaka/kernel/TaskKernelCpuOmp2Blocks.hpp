@@ -1,4 +1,5 @@
-/* Copyright 2019 Benjamin Worpitz, Bert Wesarg, René Widera
+/* Copyright 2019-2020 Benjamin Worpitz, Bert Wesarg, René Widera,
+ *                     Sergei Bastrakov
  *
  * This file is part of alpaka.
  *
@@ -178,6 +179,8 @@ namespace alpaka
                 {
                     omp::setSchedule(schedule);
                 }
+
+                ScheduleGuard(ScheduleGuard const&) = default;
 
                 ~ScheduleGuard()
                 {
