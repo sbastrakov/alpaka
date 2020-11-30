@@ -14,7 +14,7 @@ namespace alpaka
     namespace meta
     {
         //#############################################################################
-        //! Mirror of C++17 std::void_t, maps a sequence of any types to the type void
+        //! Mirror of C++17 std::void_t, maps a sequence of any types to type void
         template<class...>
         using Void = void;
     } // namespace meta
