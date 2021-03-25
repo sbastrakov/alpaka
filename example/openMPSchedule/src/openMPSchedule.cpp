@@ -1,4 +1,4 @@
-/* Copyright 2019-2020 Benjamin Worpitz, Erik Zenker, Sergei Bastrakov
+/* Copyright 2019-2021 Benjamin Worpitz, Erik Zenker, Sergei Bastrakov
  *
  * This file exemplifies usage of alpaka.
  *

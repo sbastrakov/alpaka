@@ -1,4 +1,4 @@
-/* Copyright 2019-2020 Benjamin Worpitz, Bert Wesarg, René Widera, Sergei Bastrakov
+/* Copyright 2019-2021 Benjamin Worpitz, Bert Wesarg, René Widera, Sergei Bastrakov
  *
  * This file is part of alpaka.
  *
@@ -121,28 +121,7 @@ namespace alpaka
             }
             else
             {
-                //! Set the given OpenMP schedule while this object is alive.
-                //! Restore the old schedule afterwards.
-                class ScheduleGuard
-                {
-                public:
-                    ScheduleGuard(omp::Schedule const schedule) : oldSchedule(omp::getSchedule())
-                    {
-                        omp::setSchedule(schedule);
-                    }
-
-                    ScheduleGuard(ScheduleGuard const&) = default;
-
-                    ~ScheduleGuard()
-                    {
-                        omp::setSchedule(oldSchedule);
-                    }
-
-                private:
-                    omp::Schedule const oldSchedule;
-                };
-
-                // Get the OpenMP schedule.
+                /*// Get the OpenMP schedule.
                 // We only do it when outside of a parallel region, since
                 // otherwise the change of schedule would have no effect.
                 auto const schedule(meta::apply(
@@ -153,11 +132,7 @@ namespace alpaka
                             threadElemExtent,
                             args...);
                     },
-                    m_args));
-
-                // Schedule change is a scoped object, so that the old schedule is
-                // also restored in case of exception.
-                auto const scheduleGuard = ScheduleGuard{schedule};
+                    m_args));*/
 
 #    if ALPAKA_DEBUG >= ALPAKA_DEBUG_FULL
                 std::cout << __func__ << " opening new parallel region." << std::endl;
