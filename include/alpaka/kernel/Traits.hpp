@@ -87,34 +87,10 @@ namespace alpaka
         };
 
         namespace detail
-        {
-            //#############################################################################
-            //! Functor to get OpenMP schedule defined by kernel class.
-            //! When no schedule is defined, return a default one.
-            template<class TKernel, class = void>
-            struct GetOmpSchedule
-            {
-                ALPAKA_FN_HOST static auto get()
-                {
-                    return alpaka::omp::Schedule{};
-                }
-            };
-
-            //! Functor to get OpenMP schedule for kernel classes with
-            //! ompSchedule static member.
-            //! That member is never odr-used by alpaka.
-            template<class TKernel>
-            struct GetOmpSchedule<TKernel, meta::Void<decltype(TKernel::ompSchedule)>>
-            {
-                ALPAKA_FN_HOST static auto get()
-                {
-                    // Just having return TKernel::ompSchedule here would be
-                    // a non-odr use of that variable, since it would be an
-                    // argument of the copy constructor. So have to manually
-                    // create a new identical object and then return it.
-                    return alpaka::omp::Schedule{TKernel::ompSchedule.kind, TKernel::ompSchedule.chunkSize};
-                }
-            };
+        {           
+            // Just a separate type
+            struct OmpScheduleTraitNotSpecialized {};
+            
         } // namespace detail
 
         //#############################################################################
@@ -151,21 +127,16 @@ namespace alpaka
 #if BOOST_COMP_CLANG
 #    pragma clang diagnostic pop
 #endif
+            /// Note: while developing, return another type to distinguish between specialized nad not
             ALPAKA_NO_HOST_ACC_WARNING
             template<typename TDim, typename... TArgs>
             ALPAKA_FN_HOST static auto getOmpSchedule(
                 TKernelFnObj const& kernelFnObj,
                 Vec<TDim, Idx<TAcc>> const& blockThreadExtent,
                 Vec<TDim, Idx<TAcc>> const& threadElemExtent,
-                TArgs const&... args) -> alpaka::omp::Schedule
-            {
-                alpaka::ignore_unused(kernelFnObj);
-                alpaka::ignore_unused(blockThreadExtent);
-                alpaka::ignore_unused(threadElemExtent);
-                alpaka::ignore_unused(args...);
-
-                return detail::GetOmpSchedule<TKernelFnObj>::get();
-            }
+                TArgs const&... args) -> /*alpaka::omp::Schedule;*/ 
+                detail::OmpScheduleTraitNotSpecialized { return detail::OmpScheduleTraitNotSpecialized{}; }
+            
         };
     } // namespace traits
 
@@ -220,7 +191,9 @@ namespace alpaka
         TKernelFnObj const& kernelFnObj,
         Vec<TDim, Idx<TAcc>> const& blockThreadExtent,
         Vec<TDim, Idx<TAcc>> const& threadElemExtent,
-        TArgs const&... args) -> omp::Schedule
+        TArgs const&... args) 
+        /// Could return either omp::Schedule if trait is specialized or any other type else
+        /*-> omp::Schedule*/
     {
         return traits::OmpSchedule<TKernelFnObj, TAcc>::getOmpSchedule(
             kernelFnObj,
