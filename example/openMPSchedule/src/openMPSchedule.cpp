@@ -57,8 +57,11 @@ struct OpenMPScheduleMemberKernel : public OpenMPScheduleDefaultKernel
     //! Static member to set OpenMP schedule to be used by the AccCpuOmp2Blocks accelerator.
     //! This member is only checked for when the OmpSchedule trait is not specialized for this kernel type.
     //! Note that constexpr is not required, however otherwise there has to be an external definition.
+    
+    /// TODO: commented out is old version, to be removed
     ///static constexpr auto ompSchedule = alpaka::omp::Schedule{alpaka::omp::Schedule::Static, 1};
     static constexpr auto ompScheduleKind = alpaka::omp::Schedule::Static;
+    static constexpr int ompScheduleChunkSize = 1;
 };
 
 //#############################################################################
@@ -96,7 +99,9 @@ namespace alpaka
                 alpaka::ignore_unused(threadElemExtent);
                 alpaka::ignore_unused(args...);
 
-                return alpaka::omp::Schedule{alpaka::omp::Schedule::Dynamic, 2};
+                /// TODO: changed from Dynamic for debugging
+                /// But this trait interface is not changed
+                return alpaka::omp::Schedule{alpaka::omp::Schedule::/*Dynamic*/ Static, 2};
             }
         };
     } // namespace traits

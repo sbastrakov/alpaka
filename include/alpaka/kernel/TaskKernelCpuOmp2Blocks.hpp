@@ -30,6 +30,7 @@
 #    include <alpaka/idx/MapIdx.hpp>
 #    include <alpaka/kernel/Traits.hpp>
 #    include <alpaka/meta/ApplyTuple.hpp>
+#    include <alpaka/meta/Void.hpp>
 #    include <alpaka/workdiv/WorkDivMembers.hpp>
 
 #    include <omp.h>
@@ -44,6 +45,238 @@
 
 namespace alpaka
 {
+    namespace detail
+    {
+        
+        /// Parallel for implementation for the given schedule
+        /// For relevant schedules performs compile-time dispatch between different ways of setting chunk size
+        template<typename TKernel, typename TSchedule, omp::Schedule::Kind TScheduleKind, typename TSfinae = void>
+        struct ParallelForImpl;
+        
+        /// Default schedule: simple case, no chunk size
+        /// Auto and Runtime cases will be copy-paste of this
+        template<typename TKernel, typename TSchedule>
+        struct ParallelForImpl<TKernel, TSchedule, omp::Schedule::Default>
+        {
+            template<typename TLoopBody, typename TIdx>
+            ALPAKA_FN_HOST void operator()(TKernel const &, TLoopBody && loopBody,
+                TIdx const numIterations, TSchedule const &)
+            {
+                /// TODO remove debug output_iterator
+                #pragma omp single
+                {
+                    std::cout << "ParallelForImpl for Default schedule\n";
+                }
+#    if _OPENMP < 200805 // For OpenMP < 3.0 you have to declare the loop index (a signed integer) outside of the loop
+                             // header.
+                std::intmax_t iNumBlocksInGrid(static_cast<std::intmax_t>(numIterations));
+                std::intmax_t i;
+#           pragma omp for nowait
+                for(i = 0; i < iNumBlocksInGrid; ++i)
+#    else
+#           pragma omp for nowait
+                for(TIdx i = 0; i < numIterations; ++i)
+#    endif
+                {
+                    loopBody(i);
+                }
+            }
+        };
+        
+        
+        /// Static schedule: complicated case, also have to specialize for setting chunk size
+        /// Dynamic and Guided cases will be copy-paste of this
+        ///
+        /// Default implementation: schedule trait not specialized, no ompScheduleChunkSize member
+        template<typename TKernel, typename TSchedule, typename TSfinae>
+        struct ParallelForImpl<TKernel, TSchedule, omp::Schedule::Static, TSfinae>
+        {
+            template<typename TLoopBody, typename TIdx>
+            ALPAKA_FN_HOST void operator()(TKernel const &, TLoopBody && loopBody,
+                TIdx const numIterations, TSchedule const &)
+            {
+                /// TODO remove debug output_iterator
+                #pragma omp single
+                {
+                    std::cout << "ParallelForImpl for Static schedule, no chunk size\n";
+                }
+#    if _OPENMP < 200805 // For OpenMP < 3.0 you have to declare the loop index (a signed integer) outside of the loop
+                             // header.
+                std::intmax_t iNumBlocksInGrid(static_cast<std::intmax_t>(numIterations));
+                std::intmax_t i;
+#           pragma omp for nowait schedule(static)
+                for(i = 0; i < iNumBlocksInGrid; ++i)
+#    else
+#           pragma omp for nowait schedule(static)
+                for(TIdx i = 0; i < numIterations; ++i)
+#    endif
+                {
+                    loopBody(i);
+                }
+            }
+        };
+        
+        /// Specialization for the case schedule trait was specialized
+        /// Then run-time choose depending on schedule.chunkSize
+        template<typename TKernel>
+        struct ParallelForImpl<TKernel, omp::Schedule, omp::Schedule::Static>
+        {
+            template<typename TLoopBody, typename TIdx>
+            ALPAKA_FN_HOST void operator()(TKernel const &, TLoopBody && loopBody,
+                TIdx const numIterations, omp::Schedule const & schedule)
+            {
+                /// TODO remove debug output_iterator
+                #pragma omp single
+                {
+                    std::cout << "ParallelForImpl for Static schedule and chunk size from trait specialization\n";
+                }
+#    if _OPENMP < 200805 // For OpenMP < 3.0 you have to declare the loop index (a signed integer) outside of the loop
+                             // header.
+                std::intmax_t iNumBlocksInGrid(static_cast<std::intmax_t>(numIterations));
+                std::intmax_t i;
+#           pragma omp for nowait schedule(static, schedule.chunkSize)
+                for(i = 0; i < iNumBlocksInGrid; ++i)
+#    else
+#           pragma omp for nowait schedule(static, schedule.chunkSize)
+                for(TIdx i = 0; i < numIterations; ++i)
+#    endif
+                {
+                    loopBody(i);
+                }
+            }
+        };
+        
+        /// Specialization for the case schedule trait was not specialized
+        /// and there is internal member ompScheduleChunkSize
+        template<typename TKernel, typename TSchedule>
+        struct ParallelForImpl<TKernel, TSchedule, omp::Schedule::Static,
+            meta::Void<decltype(std::declval<TKernel&>().ompScheduleChunkSize)>>
+        {
+            template<typename TLoopBody, typename TIdx>
+            ALPAKA_FN_HOST void operator()(TKernel const & kernel, TLoopBody && loopBody,
+                TIdx const numIterations, TSchedule const &)
+            {
+                /// TODO remove debug output_iterator
+                #pragma omp single
+                {
+                    std::cout << "ParallelForImpl for Static schedule, chunk size from member\n";
+                }
+#    if _OPENMP < 200805 // For OpenMP < 3.0 you have to declare the loop index (a signed integer) outside of the loop
+                             // header.
+                std::intmax_t iNumBlocksInGrid(static_cast<std::intmax_t>(numIterations));
+                std::intmax_t i;
+#           pragma omp for nowait schedule(static, kernel.ompScheduleChunkSize)
+                for(i = 0; i < iNumBlocksInGrid; ++i)
+#    else
+#           pragma omp for nowait schedule(static, kernel.ompScheduleChunkSize)
+                for(TIdx i = 0; i < numIterations; ++i)
+#    endif
+                {
+                    loopBody(i);
+                }
+            }
+        };
+        
+        /// Compile-time dispatch between ParallelFor implementations
+        /// Default implementation: schedule trait not specialized, no ompScheduleKind static member, use default
+        template<typename TKernel, typename TSchedule, typename TSfinae = void>
+        struct ParallelFor
+        {
+            template<typename TLoopBody, typename TIdx>
+            ALPAKA_FN_HOST void operator()(TKernel const & kernel, TLoopBody && loopBody,
+                TIdx const numIterations, TSchedule const & schedule)
+            {
+                #pragma omp single
+                {
+                    std::cout << "ParallelFor default version\n";
+                }
+                ParallelForImpl<TKernel, TSchedule, omp::Schedule::Default>{}(
+                    kernel,
+                    std::forward<TLoopBody>(loopBody),
+                    numIterations,
+                    schedule
+                );
+            }
+        };
+
+        /// Specialization for the case schedule trait was specialized
+        /// Then run-time choose depending on schedule.kind
+        template<typename TKernel>
+        struct ParallelFor<TKernel, omp::Schedule>
+        {
+            template<typename TLoopBody, typename TIdx>
+            ALPAKA_FN_HOST void operator()(TKernel const & kernel, TLoopBody && loopBody,
+                TIdx const numIterations, omp::Schedule const & schedule)
+            {
+                #pragma omp single
+                {
+                    std::cout << "ParallelFor switch version\n";
+                }
+                switch (schedule.kind)
+                {
+                    case omp::Schedule::Default:
+                        ParallelForImpl<TKernel, omp::Schedule, omp::Schedule::Default>{}(
+                            kernel,
+                            std::forward<TLoopBody>(loopBody),
+                            numIterations,
+                            schedule
+                        );
+                        break;
+                    /// etc. for all other options
+                    /// TODO
+                    case omp::Schedule::Static:
+                    default:
+                        ParallelForImpl<TKernel, omp::Schedule, omp::Schedule::Static>{}(
+                            kernel,
+                            std::forward<TLoopBody>(loopBody),
+                            numIterations,
+                            schedule
+                        );
+                        break;
+                }
+
+            }
+        };
+
+        /// Specialization for the case schedule trait was not specialized
+        /// and there is internal static member ompScheduleKind
+        template<typename TKernel, typename TSchedule>
+        struct ParallelFor<TKernel, TSchedule, meta::Void<decltype(TKernel::ompScheduleKind)>>
+        {
+            template<typename TLoopBody, typename TIdx>
+            ALPAKA_FN_HOST void operator()(TKernel const & kernel, TLoopBody && loopBody,
+                TIdx const numIterations, TSchedule const & schedule)
+            {
+                #pragma omp single
+                {
+                    std::cout << "ParallelFor internal member version\n";
+                }
+                ParallelForImpl<TKernel, TSchedule, TKernel::ompScheduleKind>{}(
+                    kernel,
+                    std::forward<TLoopBody>(loopBody),
+                    numIterations,
+                    schedule
+                );
+            }
+        };
+
+        /// Entry function to run parallel for
+        /// Note: we could have perfect-forwarded the kernel as well but no practical need,
+        /// while it would make SFINAE internally even more wordy
+        template<typename TKernel, typename TLoopBody, typename TIdx, typename TSchedule>
+        ALPAKA_FN_HOST ALPAKA_FN_INLINE void parallelFor(
+            TKernel const & kernel, TLoopBody && loopBody, TIdx const numIterations, TSchedule const & schedule)
+        {
+            ParallelFor<TKernel, TSchedule>{}(
+                kernel,
+                std::forward<TLoopBody>(loopBody),
+                numIterations,
+                schedule
+            );
+        }
+        
+    } // namespace detail
+    
     //#############################################################################
     //! The CPU OpenMP 2.0 block accelerator execution task.
     template<typename TDim, typename TIdx, typename TKernelFnObj, typename... TArgs>
@@ -112,43 +345,41 @@ namespace alpaka
                 throw std::runtime_error("Only one thread per block allowed in the OpenMP 2.0 block accelerator!");
             }
 
+            auto const schedule(meta::apply(
+                [&](ALPAKA_DECAY_T(TArgs) const&... args) {
+                    return getOmpSchedule<AccCpuOmp2Blocks<TDim, TIdx>>(
+                        m_kernelFnObj,
+                        blockThreadExtent,
+                        threadElemExtent,
+                        args...);
+                },
+                m_args));
+
             if(::omp_in_parallel() != 0)
             {
 #    if ALPAKA_DEBUG >= ALPAKA_DEBUG_FULL
                 std::cout << __func__ << " already within a parallel region." << std::endl;
 #    endif
-                parallelFn(boundKernelFnObj, blockSharedMemDynSizeBytes, numBlocksInGrid, gridBlockExtent);
+                parallelFn(boundKernelFnObj, blockSharedMemDynSizeBytes, numBlocksInGrid, gridBlockExtent, schedule);
             }
             else
             {
-                /*// Get the OpenMP schedule.
-                // We only do it when outside of a parallel region, since
-                // otherwise the change of schedule would have no effect.
-                auto const schedule(meta::apply(
-                    [&](ALPAKA_DECAY_T(TArgs) const&... args) {
-                        return getOmpSchedule<AccCpuOmp2Blocks<TDim, TIdx>>(
-                            m_kernelFnObj,
-                            blockThreadExtent,
-                            threadElemExtent,
-                            args...);
-                    },
-                    m_args));*/
-
 #    if ALPAKA_DEBUG >= ALPAKA_DEBUG_FULL
                 std::cout << __func__ << " opening new parallel region." << std::endl;
 #    endif
 #    pragma omp parallel
-                parallelFn(boundKernelFnObj, blockSharedMemDynSizeBytes, numBlocksInGrid, gridBlockExtent);
+                parallelFn(boundKernelFnObj, blockSharedMemDynSizeBytes, numBlocksInGrid, gridBlockExtent, schedule);
             }
         }
 
     private:
-        template<typename FnObj>
+        template<typename FnObj, typename TSchedule>
         ALPAKA_FN_HOST auto parallelFn(
             FnObj const& boundKernelFnObj,
             std::size_t const& blockSharedMemDynSizeBytes,
             TIdx const& numBlocksInGrid,
-            Vec<TDim, TIdx> const& gridBlockExtent) const -> void
+            Vec<TDim, TIdx> const& gridBlockExtent,
+            TSchedule const & schedule) const -> void
         {
 #    pragma omp single nowait
             {
@@ -170,16 +401,8 @@ namespace alpaka
                 *static_cast<WorkDivMembers<TDim, TIdx> const*>(this),
                 blockSharedMemDynSizeBytes);
 
-#    if _OPENMP < 200805 // For OpenMP < 3.0 you have to declare the loop index (a signed integer) outside of the loop
-                         // header.
-            std::intmax_t iNumBlocksInGrid(static_cast<std::intmax_t>(numBlocksInGrid));
-            std::intmax_t i;
-#        pragma omp for nowait schedule(runtime)
-            for(i = 0; i < iNumBlocksInGrid; ++i)
-#    else
-#        pragma omp for nowait schedule(runtime)
-            for(TIdx i = 0; i < numBlocksInGrid; ++i)
-#    endif
+            // Body of the OpenMP parallel loop
+            auto loopBody = [&](auto i)
             {
 #    if _OPENMP < 200805
                 auto const i_tidx = static_cast<TIdx>(i); // for issue #840
@@ -193,7 +416,9 @@ namespace alpaka
 
                 // After a block has been processed, the shared memory has to be deleted.
                 freeSharedVars(acc);
-            }
+            };
+            
+            detail::parallelFor(m_kernelFnObj, loopBody, numBlocksInGrid, schedule);
         }
 
         TKernelFnObj m_kernelFnObj;
